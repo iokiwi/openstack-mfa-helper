@@ -24,7 +24,7 @@ This helper script addresses these problems by automating the management of your
 
 ```bash
 $ mkdir -p $HOME/.local/bin
-$ curl https://raw.githubusercontent.com/iokiwi/cc-mfa/master/cc-mfa.py -o $HOME/.local/bin/cc-mfa.py
+$ curl https://raw.githubusercontent.com/iokiwi/openstack-mfa-helper/main/cc-mfa.py -o $HOME/.local/bin/cc-mfa.py
 $ chmod +x $HOME/.local/bin/cc-mfa.py
 $ export PATH=$HOME/.local/bin:$PATH
 # ^^^ Add this line to ~/.bashrc or ~/.profile etc.
