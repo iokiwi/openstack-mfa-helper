@@ -22,6 +22,7 @@ jobs:
             goos: windows
     steps:
     - uses: actions/checkout@v3
+    - run: pwd && ls -laR
     - uses: wangyoucao577/go-release-action@v1.32
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -29,7 +30,7 @@ jobs:
         goarch: ${{ matrix.goarch }}
         # goversion: latest
         # goversion: "https://dl.google.com/go/go1.13.1.linux-amd64.tar.gz"
-        project_path: "./src/os-mfa"
+        project_path: "./src/"
         binary_name: "os-mfa"
         # extra_files: LICENSE README.md
 # jobs:
