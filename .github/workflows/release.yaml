@@ -5,14 +5,14 @@ on:
     branches:
       - main
       - go-relase
-    tags:
-      - '*'
+    # tags:
+    #   - '*'
   workflow_dispatch:
     branches:
       - main
       - go-relase
-    tags:
-      - '*'
+    # tags:
+    #   - '*'
 
 jobs:
   publish:
