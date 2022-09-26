@@ -18,8 +18,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      # - name: "Hello World",
-      - run: echo "Hello <3"
+      - name: Hello World
+        run: echo "Hello <3"
       # - uses: actions/checkout@master
       #   with:
       #     fetch-depth: 1
