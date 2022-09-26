@@ -1,10 +1,8 @@
-name: GitHub Actions Demo
+name: Publish
 
-on: [push]
-
-# on:
-#   release:
-#     types: [created]
+on:
+  release:
+    types: [created]
 
 jobs:
   releases-matrix:
@@ -28,60 +26,5 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
-        # goversion: latest
-        # goversion: "https://dl.google.com/go/go1.13.1.linux-amd64.tar.gz"
         project_path: "./src/"
         binary_name: "os-mfa"
-        # extra_files: LICENSE README.md
-# jobs:
-#   publish:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@master
-#         with:
-#           fetch-depth: 1
-#       - uses: actions/setup-go@v3
-#       - name: Go Build
-#         run: go build -o build/os-mfa src/os-mfa.go
-#       # - run: ls -laR .
-#       - name: Upload release binaries
-#         uses: alexellis/upload-assets@0.2.2
-#         env:
-#           GITHUB_TOKEN: ${{ github.token }}
-#         with:
-#           asset_paths: '["./build/os-mfa"]'
-
-# name: publish
-
-# on:
-#   push:
-#     branches:
-#       - main
-#       - go-relase
-#     # tags:
-#     #   - '*'
-#   workflow_dispatch:
-#     branches:
-#       - main
-#       - go-relase
-#     # tags:
-#     #   - '*'
-
-# jobs:
-#   publish:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@master
-#         with:
-#           fetch-depth: 1
-#       - name: Hello World
-#         run: echo "Hello <3"
-#       # - uses: actions/setup-go@v3
-#       # - name: Go Build
-#       #   run: go build -o build/os-mfa src/os-mfa.go
-#       # - name: Upload release binaries
-#       #   uses: alexellis/upload-assets@0.2.2
-#       #   env:
-#       #     GITHUB_TOKEN: ${{ github.token }}
-#       #   with:
-#       #     asset_paths: '["./build/os-mfa"]'
