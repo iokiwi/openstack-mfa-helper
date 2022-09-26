@@ -12,6 +12,7 @@ jobs:
       - uses: actions/setup-go@v3
       - name: Go Build
         run: go build -o build/os-mfa src/os-mfa.go
+      - run: ls -laR .
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
