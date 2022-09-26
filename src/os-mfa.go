@@ -41,28 +41,7 @@ type AuthOptions struct {
 	Password          *string `yaml:"password,omitempty"`
 }
 
-// func get_token_sdk(auth_url string, username string, password string, user_domain_name string) string {
-
-// 	authOpts, _ := openstack.AuthOptionsFromEnv()
-// 	provider, _ := openstack.AuthenticatedClient(authOpts)
-// 	client, err := openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{
-// 		Region: "RegionOne",
-// 	})
-
-// 	opts := tokens.AuthOptions{
-// 		IdentityEndpoint: auth_url,
-// 		Username:         username,
-// 		Password:         password,
-// 		TenantID:         "be4ed7b397f24a45b9fe00567b26f404",
-// 	}
-
-// 	token, err := tokens.Create(client, opts).Extract()
-// 	return ""
-// }
-
 func get_token(auth AuthOptions, password_totp string) string {
-
-	// return "token-x"
 
 	url := fmt.Sprintf("%s/%s", auth.AuthUrl, "v3/auth/tokens")
 
@@ -88,8 +67,6 @@ func get_token(auth AuthOptions, password_totp string) string {
 	}
 
 	jsonData, _ := json.Marshal(data)
-
-	println(string(jsonData))
 
 	resp, err := http.Post(url, "application/json; charset=UTF-8", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -134,10 +111,6 @@ func read_clouds_yaml(path string) CloudsConfig {
 	}
 
 	return clouds_config
-
-	// result := make(map[interface{}]interface{})
-	// err = yaml.Unmarshal([]byte(data), &result)
-	// return result
 }
 
 func write_clouds_yaml(path string, config CloudsConfig) {
@@ -194,6 +167,7 @@ func get_ephemeral_config(config CloudConfig) CloudConfig {
 		config.Auth,
 		fmt.Sprintf("%s%s", password, totp),
 	)
+	fmt.Println(token)
 	return create_token_config(config, token)
 }
 
