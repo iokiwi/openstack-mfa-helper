@@ -18,11 +18,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@master
+        with:
+          fetch-depth: 1
       - name: Hello World
         run: echo "Hello <3"
-      # - uses: actions/checkout@master
-      #   with:
-      #     fetch-depth: 1
       # - uses: actions/setup-go@v3
       # - name: Go Build
       #   run: go build -o build/os-mfa src/os-mfa.go
