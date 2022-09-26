@@ -7,6 +7,12 @@ on:
       - go-relase
     tags:
       - '*'
+  workflow_dispatch:
+    branches:
+      - main
+      - go-relase
+    tags:
+      - '*'
 
 jobs:
   publish:
