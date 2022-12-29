@@ -23,14 +23,14 @@ type CloudsConfig struct {
 }
 
 type CloudConfig struct {
-	AuthType           *string     `yaml:"auth_type,omitempty"`
-	Auth               AuthOptions `yaml:"auth,omitempty"`
-	RegionName         string      `yaml:"region_name,omitempty"`
-	CloudInterface     string      `yaml:"interface,omitempty"`
-	IdentityApiVersion int         `yaml:"identity_api_version,omitempty""`
+	AuthType           *string    `yaml:"auth_type,omitempty"`
+	Auth               AuthConfig `yaml:"auth,omitempty"`
+	RegionName         string     `yaml:"region_name,omitempty"`
+	CloudInterface     string     `yaml:"interface,omitempty"`
+	IdentityApiVersion int        `yaml:"identity_api_version,omitempty""`
 }
 
-type AuthOptions struct {
+type AuthConfig struct {
 	AuthUrl           string  `yaml:"auth_url,omitempty"`
 	Username          string  `yaml:"username,omitempty"`
 	ProjectId         string  `yaml:"project_id,omitempty"`
@@ -41,7 +41,7 @@ type AuthOptions struct {
 	Password          *string `yaml:"password,omitempty"`
 }
 
-func get_token(auth AuthOptions, password_totp string) string {
+func get_token(auth AuthConfig, password_totp string) string {
 
 	url := fmt.Sprintf("%s/%s", auth.AuthUrl, "v3/auth/tokens")
 
@@ -66,7 +66,10 @@ func get_token(auth AuthOptions, password_totp string) string {
 		},
 	}
 
-	jsonData, _ := json.Marshal(data)
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	resp, err := http.Post(url, "application/json; charset=UTF-8", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -114,13 +117,19 @@ func read_clouds_yaml(path string) CloudsConfig {
 }
 
 func write_clouds_yaml(path string, config CloudsConfig) {
-	bytes, _ := yaml.Marshal(config)
+	bytes, err := yaml.Marshal(config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	os.WriteFile(path, bytes, 644)
 }
 
 func prompt_password() string {
 	fmt.Printf("Enter Password: ")
-	bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println("")
 	return string(bytePassword)
 }
@@ -130,7 +139,10 @@ func prompt_totp() string {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Printf("TOTP (press enter to skip): ")
-	totp, _ := reader.ReadString('\n')
+	totp, err := reader.ReadString('\n')
+	if err != nil {
+		log.Fatal(err)
+	}
 	totp = strings.TrimRight(totp, "\n")
 	totp = strings.TrimRight(totp, " ")
 	return totp
@@ -138,7 +150,7 @@ func prompt_totp() string {
 
 func create_token_config(config CloudConfig, token string) CloudConfig {
 
-	new_auth := AuthOptions{
+	new_auth := AuthConfig{
 		AuthUrl:     config.Auth.AuthUrl,
 		ProjectId:   config.Auth.ProjectId,
 		ProjectName: config.Auth.ProjectName,
@@ -163,17 +175,20 @@ func get_ephemeral_config(config CloudConfig) CloudConfig {
 	fmt.Printf("Authenticating '%s' in project '%s'\n", config.Auth.Username, config.Auth.ProjectName)
 	password := prompt_password()
 	totp := prompt_totp()
+
+	password_and_totp := fmt.Sprintf("%s%s", password, totp)
+
 	token := get_token(
 		config.Auth,
-		fmt.Sprintf("%s%s", password, totp),
+		password_and_totp,
 	)
-	fmt.Println(token)
+
 	return create_token_config(config, token)
 }
 
 // Creates a long term config from a default config
 func get_long_term_config(config CloudConfig) CloudConfig {
-	new_auth := AuthOptions{
+	new_auth := AuthConfig{
 		AuthUrl:        config.Auth.AuthUrl,
 		ProjectId:      config.Auth.ProjectId,
 		ProjectName:    config.Auth.ProjectName,
@@ -187,6 +202,20 @@ func get_long_term_config(config CloudConfig) CloudConfig {
 		RegionName:         config.RegionName,
 	}
 	return new_config
+}
+
+func create_ephemeral_config(long_term CloudConfig, os_cloud string, config_path string, config CloudsConfig) {
+	fmt.Printf("Creating Ephemeral Config '%s' in '%s'\n", os_cloud, config_path)
+	ephemeral_config := get_ephemeral_config(long_term)
+	config.Clouds[os_cloud] = ephemeral_config
+	write_clouds_yaml(config_path, config)
+}
+
+func create_long_term_config(ephemeral CloudConfig, os_cloud string, config_path string, config CloudsConfig) {
+	fmt.Printf("Creating Long Term Config '%s' in '%s'\n", os_cloud, config_path)
+	long_term_config := get_long_term_config(ephemeral)
+	config.Clouds[os_cloud] = long_term_config
+	write_clouds_yaml(config_path, config)
 }
 
 func main() {
@@ -207,22 +236,14 @@ func main() {
 
 	// 1. Check if OS_CLOUD-long-term exist
 	if long_term, ok := config.Clouds[os_cloud_long_term]; ok {
-		ephemeral_config := get_ephemeral_config(long_term)
-		config.Clouds[os_cloud] = ephemeral_config
-		write_clouds_yaml(config_path, config)
-		// 2. Create OS_CLOUD_LONG_TERM from OS_CLOUD
+		// If so, use it to create OS_CLOUD
+		create_ephemeral_config(long_term, os_cloud, config_path, config)
 	} else if default_config, ok := config.Clouds[os_cloud]; ok {
-		long_term_config := get_long_term_config(default_config)
-		config.Clouds[os_cloud_long_term] = long_term_config
-		write_clouds_yaml(config_path, config)
-
-		// 3. Create OS_CLOUD from OS_CLOUD-long-term
-		config := read_clouds_yaml(config_path)
-		long_term := config.Clouds[os_cloud_long_term]
-		ephemeral_config := get_ephemeral_config(long_term)
-		config.Clouds[os_cloud] = ephemeral_config
-		write_clouds_yaml(config_path, config)
+		// Otherwise, if OS_CLOUD exits, create OS_CLOUD-long-term
+		create_long_term_config(default_config, os_cloud_long_term, config_path, config)
+		// Then create OS_CLOUD from that
+		create_ephemeral_config(long_term, os_cloud, config_path, config)
 	} else {
-
+		fmt.Printf("Could not find '%s' or '%s' in '%s'\n", os_cloud, os_cloud_long_term, config_path)
 	}
 }

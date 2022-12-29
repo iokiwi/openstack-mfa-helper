@@ -2,3 +2,4 @@ build
 *clouds.yaml
 *clouds.yml
 *openrc.sh
+.DS_Store
