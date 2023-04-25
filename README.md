@@ -1,10 +1,11 @@
-# OS-MFA: Easily manage one or more openstack credentials for commandline and programatic access
+# OS-MFA: Easily manage one or more openstack credentials for command line and programmatic access
 
-os-mfa makes using MFA with cli/programatic authentication with OpenStack easier and more secure by combing the convience of durable authentication session persistence with better credential management hygiene by automatically managing the lifecycle of authentication tokens in the `clouds.yaml` file.
+os-mfa makes using MFA with cli/programmatic authentication with OpenStack easier and more secure by combining the convenience of durable authentication session persistence with better credential management hygiene though automatically managing the lifecycle of authentication tokens in the `clouds.yaml` file.
 
 Inspired by https://github.com/broamski/aws-mfa
 
 Note: This is currently a proof of concept/Work in progress. Pull requests welcome.
+
 ## In this README
 
 * [The Problems this project aims to Address](#the-problems-this-project-aims-to-address)
@@ -21,7 +22,7 @@ Openstack provides several methods for configuring authentication for its SDK's 
 
 ### 1. Using openrc files/environment variables is not durable across terminal sessions
 
-For some reason the perferred / default authentication method users are steered towards is using openrc files - non-trivial bash files which set environment variables in your shell session.
+For some reason the preferred / default authentication method users are steered towards is using openrc files - non-trivial bash files which set environment variables in your shell session.
 
 Using environment variables to persist your authentication session is not durable across terminal instances or restarts. If you open a new terminal for any reason you will need to re authenticate there with your username, password and MFA token. This becomes very tiresome very quickly.
 
@@ -32,17 +33,17 @@ Openstack does provide a better, more persisted, authentication mechanism by way
 Switching sessions is then simplified by referencing the cloud config name from `clouds.yaml
   * Using an cli argument (`--os-cloud=<name>`) 
   * Setting the `OS_CLOUD` environment variable inline (E.g `OS_CLOUD=<name> <command>`)
-  * Exporting `OS_CLOUD` environement variable to used by all future commands in that session (`export OS_CLOUD=<name>`)
+  * Exporting `OS_CLOUD` environnement variable to used by all future commands in that session (`export OS_CLOUD=<name>`)
 
 However using `clouds.yaml` files also has some drawbacks.
 
-* It discourages token based authorisation as tokens expire after 12 hours requiring users to constantantly manually update clouds.yaml with new tokens.
-* It discourages the use of MFA which requires token based authorisation.
-* It encourages storing usernames and passwords in clear text in a file on your machine as this is less friction than using token based authorisation.
+* It discourages token based authorization as tokens expire after 12 hours requiring users to constantly manually update clouds.yaml with new tokens.
+* It discourages the use of MFA which requires token based authorization.
+* It encourages storing usernames and passwords in clear text in a file on your machine as this is less friction than using token based authorization.
 
 ## Best of both worlds: Convenience + Hygiene with os-mfa
 
-This openstack MFA helper combines the convience of durable authentication session persistence with better security hygiene by utilising `clouds.yaml` and automatically managing the lifecycle of tokens in the config file allowing users to keep passwords out of their `clouds.yaml` file.
+This openstack MFA helper combines the convenience of durable authentication session persistence with better security hygiene by utilizing `clouds.yaml` and automatically managing the lifecycle of tokens in the config file allowing users to keep passwords out of their `clouds.yaml` file.
 
 ## Installation
 
@@ -93,26 +94,20 @@ source ~/.zshrc
 ### Windows
 
 Download the latest release
-
 ```
 https://github.com/iokiwi/openstack-mfa-helper/releases/download/0.0.3/os-mfa-windows-amd64.zip
 ```
 
 Unzip it
 
-```powershell
-PS C:\> Expand-Archive -Path os-mfa-windows-amd64.zip -DestinationPath .
-```
-
 Run it
-
 ```powershell
 PS C:\> $Env:OS_CLOUD=catalystcloud os-mfa.exe
 ```
 
 Optionally, add it to your windows `$PATH` environment variable
  * https://www.computerhope.com/issues/ch000549.htm
- * I suggest maybe placing `os-mfa.exe` in `%USERPROFILE%\bin` E.g. `C:\Users\John\bin`
+ * I suggest maybe placing `os-mfa.exe` in `%USERPROFILE%\bin` E.g. `C:\Users\John\bin\os-mfa`
 
 ## Quick Start
 
@@ -171,7 +166,7 @@ The Long Term and Ephemeral configs are described as follows.
 |Has a suffix of `-long-term`|Does not have a suffix|
 |Manual changes will be passed on to the Ephemeral config|Manual changes will be overwritten|
 
-The "Long Term" and "Ephemeral" configs coexist in the same clouds.yaml file. For example: Here's an anotated example of a `clouds.yaml` file with a Long Term and Ephemeral config.
+The "Long Term" and "Ephemeral" configs coexist in the same clouds.yaml file. For example: Here's an annotated example of a `clouds.yaml` file with a Long Term and Ephemeral config.
 
 ```yaml
 clouds:
@@ -214,22 +209,22 @@ export OS_CLOUD=catalystcloud
 
 When we run os-mfa, it will check our `clouds.yaml` file for a long term profile called `<OS_CLOUD>-long-term`. E.g. `catalystcloud-long-term`.
 
-If a long term config does not exist, os-mfa will try to create a default long term config for us based on the original config and sanitised of sensitive values.
+If a long term config does not exist, os-mfa will try to create a default long term config for us based on the original config and sanitized of sensitive values.
 
 Once os-mfa finds (or creates) the Long Term Config os-mfa will then:
 
  1. Read the project information from the long term config `<OS_CLOUD>-long-term`
  2. Prompt for your secret credentials (password, MFA code)
- 3. Swap your credentials (username, password and MFA code) for an authorised token
+ 3. Swap your credentials (username, password and MFA code) for an authorized token
  4. Create/update a token based Ephemeral configuration in your `clouds.yaml` named `<OS_CLOUD>`
 
 ## TODO:
 
  * TBH I am probably going to port this back to python
- * Alert if not clouds.yaml found
+ * Alert if no clouds.yaml found
  * Better error message if OS_CLOUD not set
- * Non interactve mode
- * Sanitize --long-term config better.
- * Store and check expiry of token 
-    * Only reauthenticate if token is not valid.
-    * -f, --force cli option to force reauthentication
+ * Non-interactive mode
+ * Sanitize long-term config better
+ * Store and check expiry of token
+    * Only reauthenticate if token is not valid
+    * -f, --force cli option to force authentication
