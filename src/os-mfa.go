@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -41,7 +43,7 @@ type AuthConfig struct {
 	Password          *string `yaml:"password,omitempty"`
 }
 
-func get_token(auth AuthConfig, password_totp string) string {
+func getToken(auth AuthConfig, passwordAndTOTP string) string {
 
 	url := fmt.Sprintf("%s/%s", auth.AuthUrl, "v3/auth/tokens")
 
@@ -54,7 +56,7 @@ func get_token(auth AuthConfig, password_totp string) string {
 						"name": auth.Username,
 						"domain": map[string]string{
 							"name": *auth.UserDomainName},
-						"password": password_totp,
+						"password": passwordAndTOTP,
 					},
 				},
 			},
@@ -81,42 +83,65 @@ func get_token(auth AuthConfig, password_totp string) string {
 	return token
 }
 
-func find_confg() (string, error) {
+func findOpenStackConfigFile() (string, error) {
 
-	search := []string{
-		"./clouds.yaml",
-		"~/.config/openstack/clouds.yaml",
-		"/etc/openstack/clouds.yaml",
+	// Check the current directory
+	currentDir, _ := os.Getwd()
+	// Check the user's configuration directory
+	userHome, _ := os.UserHomeDir()
+	userDir := filepath.Join(userHome, ".config", "openstack")
+
+	// Check the system-wide configuration directory
+	systemDir := ""
+	if runtime.GOOS == "windows" {
+		systemDir = filepath.Join("C:", "ProgramData", "openstack")
+	} else {
+		systemDir = filepath.Join("/", "etc", "openstack")
 	}
 
-	for _, s := range search {
-		_, err := os.Stat(s)
-		if err == nil {
-			return s, nil
+	searchDirs := []string{currentDir, userDir, systemDir}
+
+	// Prepend value of OS_CLIENT_CONFIG_FILE to search if defined.
+	value, present := os.LookupEnv("OS_CLIENT_CONFIG_FILE")
+	if present == true {
+		searchDirs = append([]string{value}, searchDirs...)
+	}
+
+	for _, directory := range searchDirs {
+		for _, filename := range []string{"clouds.yaml", "clouds.yml"} {
+			path := filepath.Join(directory, filename)
+			// log.Printf("Checking search path: %s", path)
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				return path, nil
+			} else {
+				fmt.Println(err)
+			}
 		}
 	}
 
-	return "", errors.New("clouds.yaml not found")
+	return "", errors.New("clouds.yaml file not found")
 }
 
-func read_clouds_yaml(path string) CloudsConfig {
+func readCloudsYAML(path string) CloudsConfig {
+
+	// log.Printf("Loading config from file: %s", path)
 
 	yamlFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 	}
 
-	clouds_config := CloudsConfig{}
-	err = yaml.Unmarshal([]byte(yamlFile), &clouds_config)
+	cloudsConfig := CloudsConfig{}
+	err = yaml.Unmarshal([]byte(yamlFile), &cloudsConfig)
 
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
-	return clouds_config
+	return cloudsConfig
 }
 
-func write_clouds_yaml(path string, config CloudsConfig) {
+func writeCloudsYAML(path string, config CloudsConfig) {
 	bytes, err := yaml.Marshal(config)
 	if err != nil {
 		log.Fatal(err)
@@ -124,7 +149,7 @@ func write_clouds_yaml(path string, config CloudsConfig) {
 	os.WriteFile(path, bytes, 644)
 }
 
-func prompt_password() string {
+func promptPassword() string {
 	fmt.Printf("Enter Password: ")
 	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
@@ -134,7 +159,7 @@ func prompt_password() string {
 	return string(bytePassword)
 }
 
-func prompt_totp() string {
+func promptTOTP() string {
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -148,102 +173,106 @@ func prompt_totp() string {
 	return totp
 }
 
-func create_token_config(config CloudConfig, token string) CloudConfig {
+func createTokenConfig(config CloudConfig, token string) CloudConfig {
 
-	new_auth := AuthConfig{
+	newAuth := AuthConfig{
 		AuthUrl:     config.Auth.AuthUrl,
 		ProjectId:   config.Auth.ProjectId,
 		ProjectName: config.Auth.ProjectName,
 		Token:       &token,
 	}
 
-	auth_typeStr := "token"
+	authTypeStr := "token"
 
-	new_config := CloudConfig{
-		AuthType:           &auth_typeStr,
-		Auth:               new_auth,
+	newConfig := CloudConfig{
+		AuthType:           &authTypeStr,
+		Auth:               newAuth,
 		IdentityApiVersion: config.IdentityApiVersion,
 		CloudInterface:     config.CloudInterface,
 		RegionName:         config.RegionName,
 	}
 
-	return new_config
+	return newConfig
 }
 
 // Creates a temporary token based authorisation from a long term config
-func get_ephemeral_config(config CloudConfig) CloudConfig {
+func getEphemeralConfig(config CloudConfig) CloudConfig {
+
 	fmt.Printf("Authenticating '%s' in project '%s'\n", config.Auth.Username, config.Auth.ProjectName)
-	password := prompt_password()
-	totp := prompt_totp()
+	password := promptPassword()
+	totp := promptTOTP()
 
-	password_and_totp := fmt.Sprintf("%s%s", password, totp)
+	passwordAndTOTP := fmt.Sprintf("%s%s", password, totp)
 
-	token := get_token(
+	token := getToken(
 		config.Auth,
-		password_and_totp,
+		passwordAndTOTP,
 	)
 
-	return create_token_config(config, token)
+	return createTokenConfig(config, token)
 }
 
 // Creates a long term config from a default config
-func get_long_term_config(config CloudConfig) CloudConfig {
-	new_auth := AuthConfig{
+func getLongTermConfig(config CloudConfig) CloudConfig {
+	newAuth := AuthConfig{
 		AuthUrl:        config.Auth.AuthUrl,
 		ProjectId:      config.Auth.ProjectId,
 		ProjectName:    config.Auth.ProjectName,
 		Username:       config.Auth.Username,
 		UserDomainName: config.Auth.UserDomainName,
 	}
-	new_config := CloudConfig{
-		Auth:               new_auth,
+	newConfig := CloudConfig{
+		Auth:               newAuth,
 		IdentityApiVersion: config.IdentityApiVersion,
 		CloudInterface:     config.CloudInterface,
 		RegionName:         config.RegionName,
 	}
-	return new_config
+	return newConfig
 }
 
-func create_ephemeral_config(long_term CloudConfig, os_cloud string, config_path string, config CloudsConfig) {
-	fmt.Printf("Creating Ephemeral Config '%s' in '%s'\n", os_cloud, config_path)
-	ephemeral_config := get_ephemeral_config(long_term)
-	config.Clouds[os_cloud] = ephemeral_config
-	write_clouds_yaml(config_path, config)
+func createEphemeralConfig(longTerm CloudConfig, osCloud string, configPath string, config CloudsConfig) {
+	fmt.Printf("Creating Ephemeral Config '%s' in '%s'\n", osCloud, configPath)
+	ephemeralConfig := getEphemeralConfig(longTerm)
+	config.Clouds[osCloud] = ephemeralConfig
+	writeCloudsYAML(configPath, config)
 }
 
-func create_long_term_config(ephemeral CloudConfig, os_cloud string, config_path string, config CloudsConfig) {
-	fmt.Printf("Creating Long Term Config '%s' in '%s'\n", os_cloud, config_path)
-	long_term_config := get_long_term_config(ephemeral)
-	config.Clouds[os_cloud] = long_term_config
-	write_clouds_yaml(config_path, config)
+func createLongTermConfig(ephemeral CloudConfig, osCloud string, configPath string, config CloudsConfig) {
+	fmt.Printf("Creating Long Term Config '%s' in '%s'\n", osCloud, configPath)
+	longTermConfig := getLongTermConfig(ephemeral)
+	config.Clouds[osCloud] = longTermConfig
+	writeCloudsYAML(configPath, config)
 }
 
 func main() {
 
-	os_cloud := os.Getenv("OS_CLOUD")
-	if os_cloud == "" {
+	osCloud := os.Getenv("OS_CLOUD")
+	if osCloud == "" {
 		fmt.Println("$OS_CLOUD not set.")
 		os.Exit(1)
 	}
-	os_cloud_long_term := fmt.Sprintf("%s-long-term", os_cloud)
 
-	config_path, err := find_confg()
+	osCloudLongTerm := fmt.Sprintf("%s-long-term", osCloud)
+	configPath, err := findOpenStackConfigFile()
+
 	if err != nil {
 		os.Exit(1)
 	}
 
-	config := read_clouds_yaml(config_path)
+	config := readCloudsYAML(configPath)
 
 	// 1. Check if OS_CLOUD-long-term exist
-	if long_term, ok := config.Clouds[os_cloud_long_term]; ok {
+	if longTerm, ok := config.Clouds[osCloudLongTerm]; ok {
 		// If so, use it to create OS_CLOUD
-		create_ephemeral_config(long_term, os_cloud, config_path, config)
-	} else if default_config, ok := config.Clouds[os_cloud]; ok {
+		createEphemeralConfig(longTerm, osCloud, configPath, config)
+	} else if defaultConfig, ok := config.Clouds[osCloud]; ok {
 		// Otherwise, if OS_CLOUD exits, create OS_CLOUD-long-term
-		create_long_term_config(default_config, os_cloud_long_term, config_path, config)
+		createLongTermConfig(defaultConfig, osCloudLongTerm, configPath, config)
 		// Then create OS_CLOUD from that
-		create_ephemeral_config(long_term, os_cloud, config_path, config)
+		config := readCloudsYAML(configPath)
+		longTerm, _ := config.Clouds[osCloudLongTerm]
+		createEphemeralConfig(longTerm, osCloud, configPath, config)
 	} else {
-		fmt.Printf("Could not find '%s' or '%s' in '%s'\n", os_cloud, os_cloud_long_term, config_path)
+		fmt.Printf("Could not find '%s' or '%s' in '%s'\n", osCloud, osCloudLongTerm, configPath)
 	}
 }

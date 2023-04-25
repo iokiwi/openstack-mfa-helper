@@ -3,3 +3,6 @@ build
 *clouds.yml
 *openrc.sh
 .DS_Store
+*.tar.gz
+*.zip
+venv/
