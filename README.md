@@ -9,6 +9,9 @@ Note: This is currently a proof of concept/Work in progress. Pull requests welco
 
 * [The Problems this project aims to Address](#the-problems-this-project-aims-to-address)
 * [Installation](#installation)
+  * [Linux](#linux)
+  * [macOS](#macos)
+  * [Windows](#windows)
 * [Quick Start](#quick-start)
 * [How it Works](#how-it-works)
 
@@ -21,6 +24,7 @@ Openstack provides several methods for configuring authentication for its SDK's 
 For some reason the perferred / default authentication method users are steered towards is using openrc files - non-trivial bash files which set environment variables in your shell session.
 
 Using environment variables to persist your authentication session is not durable across terminal instances or restarts. If you open a new terminal for any reason you will need to re authenticate there with your username, password and MFA token. This becomes very tiresome very quickly.
+
 ### 2. Using clouds.yaml does not work nicely with token authentication or MFA
 
 Openstack does provide a better, more persisted, authentication mechanism by way of the [clouds.yaml](https://docs.openstack.org/python-openstackclient/latest/configuration/index.html#configuration-files) configuration file.
@@ -42,31 +46,74 @@ This openstack MFA helper combines the convience of durable authentication sessi
 
 ## Installation
 
-Sorry the install script is very rough, I haven't got arround to writing an install script for the go binaries. (Pull requests welcome <3)
+Find the latest release: https://github.com/iokiwi/openstack-mfa-helper/releases
+
+### Linux
+
+Download the latest release. E.g.
 
 ```bash
-# Configured Values - you can change these
-VERSION="0.0.1"
-OS="darwin" # other options: "linux" "windows"
-ARCH="arm64"
-
-# Computed values
-INSTALL_DIR=$HOME/.os-mfa
-INSTALL_ZIP="os-mfa-${VERSION}-${OS}-${ARCH}"
-
-# Do the install
-mkdir -p $INSTALL_DIR
-curl -sLO "https://github.com/iokiwi/openstack-mfa-helper/releases/download/${VERSION}/${INSTALL_ZIP}.tar.gz"
-tar -xzf "${INSTALL_ZIP}.tar.gz" -C $INSTALL_DIR
-chmod +x $INSTALL_DIR/os-mfa
-export PATH=:$PATH:$INSTALL_DIR
+$ curl -LO https://github.com/iokiwi/openstack-mfa-helper/releases/download/0.0.3/os-mfa-linux-amd64.tar.gz
 ```
 
-Add the following to your `.bashrc` / `.bash_profile` / `.zshrc` / etc.
+Extract to `/usr/local/bin`
 
 ```bash
-export PATH=$PATH:$HOME/.os-mfa
+$ tar -xzf os-mfa-linux-amd64.tar.gz -C /usr/local/bin
 ```
+
+Ensure `/usr/local/bin` is on your `$PATH` or add it and refresh your terminal
+
+```bash
+echo 'export PATH="$PATH:/usr/local/bin"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### macOS
+
+Download the latest release
+
+```bash
+$ curl -LO https://github.com/iokiwi/openstack-mfa-helper/releases/download/0.0.3/os-mfa-darwin-amd64.tar.gz
+```
+
+Extract to `/usr/local/bin`
+
+```bash
+$ tar -xzf os-mfa-darwin-amd64.tar.gz -C /usr/local/bin
+```
+
+Ensure `/usr/local/bin` is on your `$PATH` or add it and refresh your terminal
+
+```bash
+echo 'export PATH="$PATH:/usr/local/bin"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Windows
+
+Download the latest release
+
+```
+https://github.com/iokiwi/openstack-mfa-helper/releases/download/0.0.3/os-mfa-windows-amd64.zip
+```
+
+Unzip it
+
+```powershell
+PS C:\> Expand-Archive -Path os-mfa-windows-amd64.zip -DestinationPath .
+```
+
+Run it
+
+```powershell
+PS C:\> $Env:OS_CLOUD=catalystcloud os-mfa.exe
+```
+
+Optionally, add it to your windows `$PATH` environment variable
+ * https://www.computerhope.com/issues/ch000549.htm
+ * I suggest maybe placing `os-mfa.exe` in `%USERPROFILE%\bin` E.g. `C:\Users\John\bin`
+
 ## Quick Start
 
 1. Obtain a `clouds.yaml` file from the cloud dashboard. For catalyst cloud:
