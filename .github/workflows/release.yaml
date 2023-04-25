@@ -28,4 +28,4 @@ jobs:
         goarch: ${{ matrix.goarch }}
         project_path: "./src/"
         binary_name: "os-mfa"
-        asset_name: "${BINARY_NAME}-${GOOS}-${GOARCH}"
+        asset_name: "os-mfa-${{ matrix.goos }}-${{ matrix.goarch }}"
